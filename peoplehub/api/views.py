@@ -11,14 +11,17 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView,ListCreateAPIView,RetrieveUpdateDestroyAPIView
+from rest_framework.mixins import CreateModelMixin,ListModelMixin,RetrieveModelMixin,DestroyModelMixin
 # Create your views here.
+
 # @csrf_exempt
 @api_view(['GET','PUT','PATCH'])
 def singleobj(request,id):
     data = get_object_or_404(Person,id=id)
     if request.method == "PUT":
-        stream = io.BytesIO(request.body)
-        parsed_data = JSONParser().parse(stream)
+        parsed_data = request.data
         serializer = PersonModelSerializer(data,data = parsed_data)
         if serializer.is_valid():
             serializer.save()
@@ -27,8 +30,7 @@ def singleobj(request,id):
 
 
     if request.method == "PATCH":
-        stream = io.BytesIO(request.body)
-        parsed_data = JSONParser().parse(stream)
+        parsed_data = request.data
         serializer = PersonModelSerializer(data, data= parsed_data,partial=True) # add partial data = True because here we change only partially 
         if serializer.is_valid():
             serializer.save()
@@ -40,18 +42,22 @@ def singleobj(request,id):
         return Response(dikha.data)
     
 # @csrf_exempt
-@api_view(['GET','POST'])
+# @api_view(['GET','POST'])
 def multipleobj(request):
     if request.method == "POST":
-        json = request.body
-        stream = io.BytesIO(json)
-        parsed_data = JSONParser().parse(stream)
+        parsed_data = request.data
         serializer = PersonModelSerializer(data = parsed_data)
-        if serializer.is_valid(): 
-            serializer.save()
-            return Response({"created":"successfull"},status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"created":"successfull"},status=status.HTTP_201_CREATED)
+        # return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
     data = Person.objects.all()
     dikha = PersonModelSerializer(data, many= True)
     return Response(dikha.data)
+
+ 
+class MultipleObjView(ListCreateAPIView,RetrieveUpdateDestroyAPIView):
+
+    queryset = Person.objects.all()
+    serializer_class = PersonModelSerializer
